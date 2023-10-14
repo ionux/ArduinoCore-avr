@@ -21,26 +21,14 @@
 #define IPAddress_h
 
 #include <stdint.h>
+
 #include "Printable.h"
 #include "WString.h"
 
-// A class to make it easier to handle and pass around IP addresses
 
-class IPAddress : public Printable {
-private:
-    union {
-	uint8_t bytes[4];  // IPv4 address
-	uint32_t dword;
-    } _address;
-
-    // Access the raw byte array containing the address.  Because this returns a pointer
-    // to the internal structure rather than a copy of the address this function should only
-    // be used when you know that the usage of the returned uint8_t* will be transient and not
-    // stored.
-    uint8_t* raw_address() { return _address.bytes; };
-
+class IPAddress : public Printable
+{
 public:
-    // Constructors
     IPAddress();
     IPAddress(uint8_t first_octet, uint8_t second_octet, uint8_t third_octet, uint8_t fourth_octet);
     IPAddress(uint32_t address);
@@ -52,6 +40,7 @@ public:
     // Overloaded cast operator to allow IPAddress objects to be used where a pointer
     // to a four-byte uint8_t array is expected
     operator uint32_t() const { return _address.dword; };
+
     bool operator==(const IPAddress& addr) const { return _address.dword == addr._address.dword; };
     bool operator==(const uint8_t* addr) const;
 
@@ -71,8 +60,21 @@ public:
     friend class Server;
     friend class DhcpClass;
     friend class DNSClient;
+
+private:
+    union
+    {
+        uint8_t bytes[4];  // IPv4 address
+        uint32_t dword;
+    } _address;
+
+    // Access the raw byte array containing the address.  Because this returns a pointer
+    // to the internal structure rather than a copy of the address this function should only
+    // be used when you know that the usage of the returned uint8_t* will be transient and not
+    // stored.
+    uint8_t* raw_address() { return _address.bytes; };
 };
 
 const IPAddress INADDR_NONE(0,0,0,0);
 
-#endif
+#endif // IPAddress_h
