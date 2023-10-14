@@ -21,6 +21,9 @@
   Modified 14 August 2012 by Alarus
 */
 
+#ifndef CORES_ARD_HWSERIAL_PRIVATE
+#define CORES_ARD_HWSERIAL_PRIVATE
+
 #include "wiring_private.h"
 
 // this next line disables the entire HardwareSerial.cpp, 
@@ -59,7 +62,7 @@
 #define UPE0 UPE1
 #define UDRE0 UDRE1
 #else
-#error No UART found in HardwareSerial.cpp
+#error "No UART found in HardwareSerial.cpp"
 #endif
 #endif // !defined TXC0
 
@@ -67,18 +70,15 @@
 // UART0 for the other UARTs as well, in case these values ever get
 // changed for future hardware.
 #if defined(TXC1) && (TXC1 != TXC0 || RXEN1 != RXEN0 || RXCIE1 != RXCIE0 || \
-		      UDRIE1 != UDRIE0 || U2X1 != U2X0 || UPE1 != UPE0 || \
-		      UDRE1 != UDRE0)
+		      UDRIE1 != UDRIE0 || U2X1 != U2X0 || UPE1 != UPE0 || UDRE1 != UDRE0)
 #error "Not all bit positions for UART1 are the same as for UART0"
 #endif
 #if defined(TXC2) && (TXC2 != TXC0 || RXEN2 != RXEN0 || RXCIE2 != RXCIE0 || \
-		      UDRIE2 != UDRIE0 || U2X2 != U2X0 || UPE2 != UPE0 || \
-		      UDRE2 != UDRE0)
+		      UDRIE2 != UDRIE0 || U2X2 != U2X0 || UPE2 != UPE0 || UDRE2 != UDRE0)
 #error "Not all bit positions for UART2 are the same as for UART0"
 #endif
 #if defined(TXC3) && (TXC3 != TXC0 || RXEN3 != RXEN0 || RXCIE3 != RXCIE0 || \
-		      UDRIE3 != UDRIE0 || U3X3 != U3X0 || UPE3 != UPE0 || \
-		      UDRE3 != UDRE0)
+		      UDRIE3 != UDRIE0 || U3X3 != U3X0 || UPE3 != UPE0 || UDRE3 != UDRE0)
 #error "Not all bit positions for UART3 are the same as for UART0"
 #endif
 
@@ -94,30 +94,37 @@ HardwareSerial::HardwareSerial(
     _rx_buffer_head(0), _rx_buffer_tail(0),
     _tx_buffer_head(0), _tx_buffer_tail(0)
 {
+    // Intentionally empty.
 }
 
 // Actual interrupt handlers //////////////////////////////////////////////////////////////
 
 void HardwareSerial::_rx_complete_irq(void)
 {
-  if (bit_is_clear(*_ucsra, UPE0)) {
+  if (bit_is_clear(*_ucsra, UPE0))
+  {
     // No Parity error, read byte and store it in the buffer if there is
     // room
     unsigned char c = *_udr;
+
     rx_buffer_index_t i = (unsigned int)(_rx_buffer_head + 1) % SERIAL_RX_BUFFER_SIZE;
 
     // if we should be storing the received character into the location
     // just before the tail (meaning that the head would advance to the
     // current location of the tail), we're about to overflow the buffer
     // and so we don't write the character or advance the head.
-    if (i != _rx_buffer_tail) {
+    if (i != _rx_buffer_tail)
+    {
       _rx_buffer[_rx_buffer_head] = c;
       _rx_buffer_head = i;
     }
-  } else {
+  }
+  else
+  {
     // Parity error, read byte but discard it
     *_udr;
   };
 }
 
-#endif // whole file
+#endif
+#endif // CORES_ARD_HWSERIAL_PRIVATE
