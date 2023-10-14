@@ -45,53 +45,75 @@ IPAddress::IPAddress(const uint8_t *address)
 
 bool IPAddress::fromString(const char *address)
 {
+    bool retcode = true;
+
     uint16_t acc = 0; // Accumulator
     uint8_t dots = 0;
 
     while (*address)
     {
         char c = *address++;
-        if (c >= '0' && c <= '9')
+
+        switch (c)
         {
-            acc = acc * 10 + (c - '0');
-            if (acc > 255) {
-                // Value out of [0..255] range
-                return false;
-            }
-        }
-        else if (c == '.')
-        {
-            if (dots == 3) {
-                // Too much dots (there must be 3 dots)
-                return false;
-            }
-            _address.bytes[dots++] = acc;
-            acc = 0;
-        }
-        else
-        {
-            // Invalid char
-            return false;
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+                acc = acc * 10 + (c - '0');
+                if (acc > 255)
+                {
+                    // Value out of [0..255] range
+                    retcode = false;
+                }
+                break;
+            case '.':
+                if (dots == 3)
+                {
+                    // Too many dots (there must be only 3 dots)
+                    retcode = false;
+                }
+                else
+                {
+                    _address.bytes[dots++] = acc;
+                    acc = 0;
+                }
+                break;
+            default:
+                // Invalid char
+                retcode = false;
+                break;
         }
     }
 
-    if (dots != 3) {
+    if (dots != 3)
+    {
         // Too few dots (there must be 3 dots)
-        return false;
+        retcode = false;
     }
+
     _address.bytes[3] = acc;
-    return true;
+
+    return retcode;
 }
 
 IPAddress& IPAddress::operator=(const uint8_t *address)
 {
     memcpy(_address.bytes, address, sizeof(_address.bytes));
+
     return *this;
 }
 
 IPAddress& IPAddress::operator=(uint32_t address)
 {
     _address.dword = address;
+
     return *this;
 }
 
@@ -103,12 +125,17 @@ bool IPAddress::operator==(const uint8_t* addr) const
 size_t IPAddress::printTo(Print& p) const
 {
     size_t n = 0;
-    for (int i =0; i < 3; i++)
+
+    if (p != NULL)
     {
-        n += p.print(_address.bytes[i], DEC);
-        n += p.print('.');
+        for (int i = 0; i < 3; i++)
+        {
+            n += p.print(_address.bytes[i], DEC);
+            n += p.print('.');
+        }
+
+        n += p.print(_address.bytes[3], DEC);
     }
-    n += p.print(_address.bytes[3], DEC);
+
     return n;
 }
-
