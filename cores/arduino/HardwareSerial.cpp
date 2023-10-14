@@ -106,16 +106,22 @@ void HardwareSerial::_tx_udr_empty_irq(void)
   *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << TXC0)));
 #endif
 
-  if (_tx_buffer_head == _tx_buffer_tail) {
-    // Buffer empty, so disable interrupts
-    cbi(*_ucsrb, UDRIE0);
-  }
+    if (_tx_buffer_head == _tx_buffer_tail)
+    {
+        // Buffer empty, so disable interrupts
+        cbi(*_ucsrb, UDRIE0);
+    }
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
 
 void HardwareSerial::begin(unsigned long baud, byte config)
 {
+    if (baud < 2)
+    {
+        return;
+    }
+
   // Try u2x mode first
   uint16_t baud_setting = (F_CPU / 4 / baud - 1) / 2;
   *_ucsra = 1 << U2X0;
@@ -125,7 +131,7 @@ void HardwareSerial::begin(unsigned long baud, byte config)
   // on the 8U2 on the Uno and Mega 2560. Also, The baud_setting cannot
   // be > 4095, so switch back to non-u2x mode if the baud rate is too
   // low.
-  if (((F_CPU == 16000000UL) && (baud == 57600)) || (baud_setting >4095))
+  if (((F_CPU == 16000000UL) && (baud == 57600)) || (baud_setting > 4095))
   {
     *_ucsra = 0;
     baud_setting = (F_CPU / 8 / baud - 1) / 2;
@@ -170,23 +176,27 @@ int HardwareSerial::available(void)
 
 int HardwareSerial::peek(void)
 {
-  if (_rx_buffer_head == _rx_buffer_tail) {
-    return -1;
-  } else {
+    if (_rx_buffer_head == _rx_buffer_tail)
+    {
+        return -1;
+    }
+
     return _rx_buffer[_rx_buffer_tail];
-  }
 }
 
 int HardwareSerial::read(void)
 {
-  // if the head isn't ahead of the tail, we don't have any characters
-  if (_rx_buffer_head == _rx_buffer_tail) {
-    return -1;
-  } else {
+    // if the head isn't ahead of the tail, we don't have any characters
+    if (_rx_buffer_head == _rx_buffer_tail)
+    {
+        return -1;
+    }
+
     unsigned char c = _rx_buffer[_rx_buffer_tail];
+
     _rx_buffer_tail = (rx_buffer_index_t)(_rx_buffer_tail + 1) % SERIAL_RX_BUFFER_SIZE;
+
     return c;
-  }
 }
 
 int HardwareSerial::availableForWrite(void)
@@ -198,8 +208,13 @@ int HardwareSerial::availableForWrite(void)
     head = _tx_buffer_head;
     tail = _tx_buffer_tail;
   }
-  if (head >= tail) return SERIAL_TX_BUFFER_SIZE - 1 - head + tail;
-  return tail - head - 1;
+
+    if (head >= tail
+    {
+        return SERIAL_TX_BUFFER_SIZE - 1 - head + tail;
+    }
+
+    return tail - head - 1;
 }
 
 void HardwareSerial::flush()
@@ -208,16 +223,24 @@ void HardwareSerial::flush()
   // case is needed since there is no way to force the TXC (transmit
   // complete) bit to 1 during initialization
   if (!_written)
+  {
     return;
-
-  while (bit_is_set(*_ucsrb, UDRIE0) || bit_is_clear(*_ucsra, TXC0)) {
-    if (bit_is_clear(SREG, SREG_I) && bit_is_set(*_ucsrb, UDRIE0))
-	// Interrupts are globally disabled, but the DR empty
-	// interrupt should be enabled, so poll the DR empty flag to
-	// prevent deadlock
-	if (bit_is_set(*_ucsra, UDRE0))
-	  _tx_udr_empty_irq();
   }
+
+  while (bit_is_set(*_ucsrb, UDRIE0) || bit_is_clear(*_ucsra, TXC0))
+  {
+    if (bit_is_clear(SREG, SREG_I) && bit_is_set(*_ucsrb, UDRIE0))
+    {
+	    // Interrupts are globally disabled, but the DR empty
+	    // interrupt should be enabled, so poll the DR empty flag to
+	    // prevent deadlock
+	    if (bit_is_set(*_ucsra, UDRE0))
+        {
+            _tx_udr_empty_irq();
+        }
+    }
+  }
+
   // If we get here, nothing is queued anymore (DRIE is disabled) and
   // the hardware finished transmission (TXC is set).
 }
@@ -225,11 +248,13 @@ void HardwareSerial::flush()
 size_t HardwareSerial::write(uint8_t c)
 {
   _written = true;
+
   // If the buffer and the data register is empty, just write the byte
   // to the data register and be done. This shortcut helps
   // significantly improve the effective datarate at high (>
   // 500kbit/s) bitrates, where interrupt overhead becomes a slowdown.
-  if (_tx_buffer_head == _tx_buffer_tail && bit_is_set(*_ucsra, UDRE0)) {
+  if (_tx_buffer_head == _tx_buffer_tail && bit_is_set(*_ucsra, UDRE0))
+  {
     // If TXC is cleared before writing UDR and the previous byte
     // completes before writing to UDR, TXC will be set but a byte
     // is still being transmitted causing flush() to return too soon.
@@ -238,7 +263,8 @@ size_t HardwareSerial::write(uint8_t c)
     // interrupts might delay the TXC clear so the byte written to UDR
     // is transmitted (setting TXC) before clearing TXC. Then TXC will
     // be cleared when no bytes are left, causing flush() to hang
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+      {
       *_udr = c;
 #ifdef MPCM0
       *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << MPCM0))) | (1 << TXC0);
@@ -246,20 +272,26 @@ size_t HardwareSerial::write(uint8_t c)
       *_ucsra = ((*_ucsra) & ((1 << U2X0) | (1 << TXC0)));
 #endif
     }
+
     return 1;
   }
+
   tx_buffer_index_t i = (_tx_buffer_head + 1) % SERIAL_TX_BUFFER_SIZE;
 	
   // If the output buffer is full, there's nothing for it other than to 
   // wait for the interrupt handler to empty it a bit
-  while (i == _tx_buffer_tail) {
-    if (bit_is_clear(SREG, SREG_I)) {
+  while (i == _tx_buffer_tail)
+  {
+    if (bit_is_clear(SREG, SREG_I))
+    {
       // Interrupts are disabled, so we'll have to poll the data
       // register empty flag ourselves. If it is set, pretend an
       // interrupt has happened and call the handler to free up
       // space for us.
-      if(bit_is_set(*_ucsra, UDRE0))
-	_tx_udr_empty_irq();
+        if (bit_is_set(*_ucsra, UDRE0))
+        {
+            _tx_udr_empty_irq();
+        }
     } else {
       // nop, the interrupt handler will free up space for us
     }
@@ -270,7 +302,8 @@ size_t HardwareSerial::write(uint8_t c)
   // make atomic to prevent execution of ISR between setting the
   // head pointer and setting the interrupt flag resulting in buffer
   // retransmission
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
     _tx_buffer_head = i;
     sbi(*_ucsrb, UDRIE0);
   }
