@@ -25,23 +25,33 @@
 
 #if defined(USBCON)
 
-class PluggableUSBModule {
+class PluggableUSBModule
+{
 public:
-  PluggableUSBModule(uint8_t numEps, uint8_t numIfs, uint8_t *epType) :
-    numEndpoints(numEps), numInterfaces(numIfs), endpointType(epType)
-  { }
+  PluggableUSBModule(uint8_t numEps, uint8_t numIfs, uint8_t *epType)
+        : numEndpoints(numEps), numInterfaces(numIfs), endpointType(epType)
+  {
+      // Intentionally empty.
+  }
 
 protected:
   virtual bool setup(USBSetup& setup) = 0;
+
   virtual int getInterface(uint8_t* interfaceCount) = 0;
   virtual int getDescriptor(USBSetup& setup) = 0;
-  virtual uint8_t getShortName(char *name) { name[0] = 'A'+pluggedInterface; return 1; }
+
+  virtual uint8_t getShortName(char *name)
+    {
+        name[0] = 'A' + pluggedInterface;
+        return 1;
+    }
 
   uint8_t pluggedInterface;
   uint8_t pluggedEndpoint;
 
   const uint8_t numEndpoints;
   const uint8_t numInterfaces;
+
   const uint8_t *endpointType;
 
   PluggableUSBModule *next = NULL;
@@ -49,18 +59,24 @@ protected:
   friend class PluggableUSB_;
 };
 
-class PluggableUSB_ {
+class PluggableUSB_
+{
 public:
   PluggableUSB_();
+
   bool plug(PluggableUSBModule *node);
+
   int getInterface(uint8_t* interfaceCount);
   int getDescriptor(USBSetup& setup);
+
   bool setup(USBSetup& setup);
+
   void getShortName(char *iSerialNum);
 
 private:
   uint8_t lastIf;
   uint8_t lastEp;
+
   PluggableUSBModule* rootNode;
 };
 
@@ -71,4 +87,4 @@ PluggableUSB_& PluggableUSB();
 
 #endif
 
-#endif
+#endif // PUSB_h
